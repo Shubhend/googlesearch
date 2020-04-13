@@ -44,11 +44,11 @@ class MainController extends AppController
 
     }
 
-    function google()
+    function google($url)
     {
 
         $client = new Google_Client();
-        $jsonpath = 'C:\Users\Shubhenud\Desktop\titanium-gantry-236611-014936a0a534.json';
+        $jsonpath = 'titanium-gantry-236611-014936a0a534.json';
 // service_account_file.json is the private key that you created for your service account.
         $client->setAuthConfig($jsonpath);
         $client->addScope('https://www.googleapis.com/auth/indexing');
@@ -59,34 +59,148 @@ class MainController extends AppController
 
 // Define contents here. The structure of the content is described in the next step.
         $content = '{
-            "url" : "https://lovetoreads.com",
+            "url" : "'.$url.'",
             "type" : "URL_UPDATED"
         }';
 
-        //  $response = $httpClient->post($endpoint, [ 'body' => $content ]);
-        // $status_code = $response->getStatusCode();
-        var_dump($this->base_url);
+//var_dump($content);exit;
+        $response = $httpClient->post($endpoint, [ 'body' => $content ]);
+        $status_code = $response->getStatusCode();
+
         $path = $this->base_url;
-        $file = fopen("failure.txt", "w");
-        echo fwrite($file, "Hello World. Testing!");
+        // $file = fopen("success.txt", "a");
+        //  fwrite($file, "Hello World. Testing!");
 
         if ($status_code == "200") {
-            file_put_contents($path . "success.txt", "Url Successfully Indexed" . $this->base_url, FILE_APPEND);
+
+            $file = fopen("success.txt", "a");
+            fwrite($file, "Success! url".$url."\r\n");
+
+
 
         } else {
-            var_dump("jjjj");
-            file_put_contents($path . "failure.txt", "Error Occour" . $this->base_url);
+            $file = fopen("failure.txt", "a");
+            fwrite($file, "Error url!".$url."Error code".$status_code."\r\n");
+
+
 
         }
+        return $status_code;
 
-        var_dump($content);
-        var_dump($status_code);
-        exit;
     }
 
     public function index()
     {
-        $this->google();
+
+        $data=array();
+        $con = mysqli_connect("localhost","voteonl1_1","Shubhendu@12","voteonl1_wp586");
+
+// Check connection
+        if (mysqli_connect_errno()) {
+            echo "Failed to connect to MySQL: " . mysqli_connect_error();
+            exit();
+        }
+
+
+        $sql = "SELECT * FROM wpr7_posts where is_index='0' and post_type='post' ORDER BY id";
+
+        if ($result = $con -> query($sql)) {
+            while ($row = $result -> fetch_row()) {
+
+                $id=$row[0];
+
+
+                if (strpos($row[18], '?p') !== false) {
+
+
+
+                    $sql2 = "SELECT * FROM wpr7_yoast_seo_links where target_post_id='$id' and type='internal' ";
+
+
+                    if ($result2 = $con -> query($sql2)) {
+                        while ($row2 = $result2 -> fetch_row()) {
+
+
+
+
+
+                            if (strpos($row2[1], '?p') == false) {
+
+                                array_push($data,$row2[1]);
+
+
+                            }
+
+
+                        }
+                    }
+
+
+
+                }else{
+                    array_push($data,$row[18]);
+
+
+                }
+
+
+
+            }
+            $result -> free_result();
+        }
+        var_dump(array_unique($data));
+
+
+        foreach(array_unique($data) as $d){
+
+
+            if (strpos($row2[1], 'lovetoreads.com') !== false) {
+
+            }else{
+
+                $ret= $this->google($d);
+                // var_dump($d."<br/>");
+
+                if($ret==200){
+                    $sql="UPDATE wpr7_posts
+SET is_index='1'
+WHERE guid='".$d."' and post_type='post' ";
+                    $con -> query($sql);
+
+
+
+                    $sql24 = "SELECT * FROM wpr7_yoast_seo_links where url='$d' and type='internal' ";
+
+
+                    if ($result24 = $con -> query($sql24)) {
+                        while ($row24 = $result24 -> fetch_row()) {
+
+                            $pid=$row24[3];
+                            $sqle="UPDATE wpr7_posts
+SET is_index='1'
+WHERE ID='".$pid."' and post_type='post' ";
+                            $con -> query($sqle);
+
+                            echo $pid."<br/>";
+
+                        }
+
+                    }
+
+
+
+
+                }
+
+                echo $ret;
+
+            }
+
+
+        }
+        var_dump("done");
+        exit;
+
     }
 }
 
